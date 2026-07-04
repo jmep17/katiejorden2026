@@ -40,8 +40,8 @@
       scroll-snap-type: x mandatory; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
     .carousel::-webkit-scrollbar { display: none; }
     .shot { flex: 0 0 auto; width: min(74vw, 420px); scroll-snap-align: center; cursor: pointer; }
-    .shot img { display: block; width: 100%; height: auto; border-radius: 14px;
-      box-shadow: 0 16px 44px rgba(60,40,44,0.28); }
+    .shot img { display: block; width: 100%; aspect-ratio: 4 / 5; object-fit: cover;
+      border-radius: 14px; box-shadow: 0 16px 44px rgba(60,40,44,0.28); }
     .shot p { text-align: center; font-style: italic; color: #90807a;
       font-size: clamp(13px, 3.6vw, 16px); margin: 12px 0 0; }
 
