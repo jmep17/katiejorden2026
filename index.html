@@ -126,7 +126,7 @@
     <footer>Made with love · 2026</footer>
   </div>
 
-  <video id="master" src="daydream.mp4" autoplay muted loop playsinline preload="auto"></video>
+  <video id="master" src="daydream.mp4" muted loop playsinline preload="auto"></video>
   <div id="ads"></div>
 
   <script>
@@ -144,8 +144,6 @@
       { name: 'StreamHaven', line: 'Films free for 30 days', cta: 'Try free' },
       { name: 'Petal &amp; Vine', line: 'Fresh flowers, next day', cta: 'Order' }
     ];
-
-    master.play().catch(function(){});
 
     var vw = 16, vh = 9;
     master.addEventListener('loadedmetadata', function () {
@@ -190,11 +188,16 @@
       return ad;
     }
 
-    function enableSound() {
+    // Nothing plays until the first interaction; then the video, audio and
+    // first ad all start together.
+    function start() {
       if (soundOn) return;
       soundOn = true;
       master.muted = false; master.volume = 1;
       master.play().catch(function(){});
+      var first = makeAd(true);
+      first.style.opacity = '0'; first.style.transition = 'opacity .4s ease';
+      requestAnimationFrame(function () { first.style.opacity = '1'; });
     }
 
     function grow(ad) {
@@ -204,9 +207,9 @@
       ad.style.transform = 'translate(-50%,-50%) rotate(' + ad.dataset.rot + 'deg) scale(' + s + ')';
     }
 
-    // Click, tap, OR scroll starts the music + video together.
+    // Click, tap, OR scroll kicks everything off.
     ['click', 'pointerdown', 'touchstart', 'keydown', 'scroll', 'wheel'].forEach(function (evt) {
-      window.addEventListener(evt, enableSound, { passive: true });
+      window.addEventListener(evt, start, { passive: true });
     });
 
     // Every ✕ on every ad: grow it and spawn two more.
@@ -214,15 +217,11 @@
       var xb = ev.target.closest && ev.target.closest('.x');
       if (!xb) return;
       ev.stopPropagation();
-      enableSound();
+      start();
       grow(xb.closest('.ad'));
       var spawn = Math.min(2, MAX_ADS - adCount);
       for (var i = 0; i < spawn; i++) makeAd(false);
     });
-
-    var first = makeAd(true);
-    first.style.opacity = '0'; first.style.transition = 'opacity .4s ease';
-    setTimeout(function () { first.style.opacity = '1'; }, 800);
   </script>
 </body>
 </html>
