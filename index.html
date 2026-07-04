@@ -28,7 +28,7 @@
     .brand span { color: var(--rose); }
     .links { display: flex; gap: clamp(10px, 3.5vw, 26px); font-size: clamp(11px, 3vw, 14px);
       font-family: system-ui, sans-serif; letter-spacing: 0.06em; text-transform: uppercase; color: #8a7a72; }
-    .links a { color: inherit; text-decoration: none; white-space: nowrap; }
+    .links a { color: inherit; text-decoration: none; white-space: nowrap; cursor: pointer; }
 
     .hero { text-align: center; padding: clamp(30px, 8vw, 64px) 20px clamp(12px, 4vw, 28px); }
     .hero .date { font-family: system-ui, sans-serif; letter-spacing: 0.22em; text-transform: uppercase;
@@ -95,6 +95,21 @@
       white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .adfoot .cta { flex-shrink: 0; background: #1a73e8; color: #fff; border: 0; border-radius: 4px;
       padding: 7px 12px; font-size: 12px; font-weight: 700; white-space: nowrap; cursor: pointer; }
+
+    /* Cookie banner */
+    #cookie { position: fixed; left: 10px; right: 10px; z-index: 60;
+      bottom: calc(env(safe-area-inset-bottom, 0px) + 10px);
+      background: #fff; border: 1px solid #dadce0; border-radius: 12px;
+      box-shadow: 0 12px 40px rgba(0,0,0,0.28);
+      font-family: system-ui, sans-serif; padding: 14px 16px;
+      transition: opacity .4s ease, transform .4s ease; }
+    #cookie.gone { opacity: 0; transform: translateY(12px); pointer-events: none; }
+    #cookie p { margin: 0 0 10px; font-size: 13px; line-height: 1.45; color: #3c4043; }
+    #cookie .row { display: flex; gap: 8px; justify-content: flex-end; }
+    #cookie button { appearance: none; -webkit-appearance: none; border: 0; cursor: pointer;
+      border-radius: 6px; padding: 8px 14px; font-size: 13px; font-weight: 600; }
+    #cookie .yes { background: #1a73e8; color: #fff; }
+    #cookie .no  { background: #eceef1; color: #3c4043; }
   </style>
 </head>
 <body>
@@ -134,6 +149,14 @@
   <video id="master" src="daydream.mp4" muted loop playsinline preload="auto"></video>
   <div id="ads"></div>
 
+  <div id="cookie">
+    <p id="cookiemsg">We use cookies to make your experience unforgettable.</p>
+    <div class="row">
+      <button class="no" id="creject">Reject all</button>
+      <button class="yes" id="caccept">Accept all</button>
+    </div>
+  </div>
+
   <script>
     var master = document.getElementById('master');
     var ads = document.getElementById('ads');
@@ -141,13 +164,18 @@
     var soundOn = false;
     var adCount = 0, zTop = 40, MAX_ADS = 48;
 
+    // Ordered: plausible at first, increasingly self-aware as they breed.
     var SPONSORS = [
       { name: 'Kinloch Wedding Films', line: 'Cinematic wedding videography', cta: 'Learn more' },
       { name: 'Honeymoon Escapes', line: 'Beach villas up to 40% off', cta: 'Book now' },
       { name: 'Everly & Co.', line: 'Anniversary rings, handmade', cta: 'Shop' },
       { name: 'CanvasNest', line: 'Your photos, printed big', cta: 'Get 30% off' },
-      { name: 'StreamHaven', line: 'Films free for 30 days', cta: 'Try free' },
-      { name: 'Petal &amp; Vine', line: 'Fresh flowers, next day', cta: 'Order' }
+      { name: 'AdAway Pro', line: 'Removes all ads*  (*not these)', cta: 'Install' },
+      { name: 'Close Button Repair Co.', line: 'Is your ✕ not working? Same.', cta: 'Get help' },
+      { name: 'Monkee Repellent', line: 'Clinically proven 0% effective', cta: 'Spray now' },
+      { name: 'Sleepy Jean Coffee', line: 'Cheer up. It’s decaf.', cta: 'Wake up' },
+      { name: 'Daydream Believer', line: 'Stuck in your head since 1967', cta: 'Sing along' },
+      { name: 'This Ad', line: 'This ad loves you very much', cta: '❤️' }
     ];
 
     var vw = 16, vh = 9;
@@ -167,7 +195,7 @@
     })();
 
     function makeAd(first) {
-      var s = SPONSORS[Math.floor(Math.random() * SPONSORS.length)];
+      var s = SPONSORS[Math.min(adCount, SPONSORS.length - 1)];
       var ad = document.createElement('div');
       ad.className = 'ad';
       // The first ad is a small, innocuous corner ad; later ones vary.
@@ -210,7 +238,49 @@
       var first = makeAd(true);
       first.style.opacity = '0'; first.style.transition = 'opacity .4s ease';
       requestAnimationFrame(function () { first.style.opacity = '1'; });
+      startScrubber();
     }
+
+    // The fake film's scrubber starts "playing" too, for realism.
+    function startScrubber() {
+      var bar = document.querySelector('.player .ctrl .track i');
+      var t = document.querySelector('.player .ctrl .t');
+      var cur = 72, total = 272; // 1:12 of 4:32
+      setInterval(function () {
+        cur = (cur + 1) % total;
+        if (bar) bar.style.width = (cur / total * 100) + '%';
+        if (t) t.textContent = Math.floor(cur / 60) + ':' + ('0' + cur % 60).slice(-2) + ' / 4:32';
+      }, 1000);
+    }
+
+    // --- Cookie banner: rejecting your fate is not supported. ---
+    var cookie = document.getElementById('cookie');
+    var cookiemsg = document.getElementById('cookiemsg');
+    var rejects = 0;
+    var COMEBACKS = [
+      'Are you sure? These are artisanal, small-batch cookies.',
+      'Rejecting cookies rejects joy. Please reconsider.',
+      'The cookies respect your decision. (They don’t.)'
+    ];
+    document.getElementById('caccept').addEventListener('click', function () {
+      cookie.classList.add('gone');
+    });
+    document.getElementById('creject').addEventListener('click', function () {
+      if (rejects < COMEBACKS.length) {
+        cookiemsg.textContent = COMEBACKS[rejects];
+        rejects++;
+        if (soundOn && adCount < MAX_ADS) makeAd(false);
+      } else {
+        cookie.classList.add('gone');
+      }
+    });
+
+    // The "dead" nav links are ad space too.
+    document.querySelectorAll('.links a:not([href])').forEach(function (a) {
+      a.addEventListener('click', function () {
+        if (soundOn && adCount < MAX_ADS) makeAd(false);
+      });
+    });
 
     function grow(ad) {
       var s = parseFloat(ad.dataset.scale || '1') * 1.24;
