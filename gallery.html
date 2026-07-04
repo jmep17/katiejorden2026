@@ -58,7 +58,8 @@
     #takeover { position: fixed; inset: 0; z-index: 100; background: #000; display: none; }
     #takeover.show { display: block; }
     #grid { position: absolute; inset: 0; display: grid; gap: 2px; background: #000;
-      grid-template-columns: 1fr; grid-auto-rows: 1fr; }
+      grid-template-columns: 1fr; grid-auto-rows: 1fr;
+      justify-content: center; align-content: center; }
     #grid video, #grid canvas { width: 100%; height: 100%; object-fit: cover;
       display: block; min-width: 0; min-height: 0; }
     #back { position: fixed; z-index: 110; top: calc(env(safe-area-inset-top, 0px) + 14px); left: 14px;
@@ -110,24 +111,31 @@
 
     // Grid tiles: one real video decodes; every extra tile is a canvas
     // mirroring it (iOS only allows a few live decoders).
-    var tiles = 1, MAX_TILES = 36, tctx = [];
+    // The wall is always a perfect k×k square of ratio-true tiles.
+    var k = 1, MAX_K = 6, tctx = [];
     var vw = 16, vh = 9;
     tv.addEventListener('loadedmetadata', function () {
       vw = tv.videoWidth || 16; vh = tv.videoHeight || 9;
+      layout();
     });
-    function reflow() {
-      grid.style.gridTemplateColumns = 'repeat(' + Math.ceil(Math.sqrt(tiles)) + ', 1fr)';
-    }
-    function addTiles(n) {
-      for (var i = 0; i < n && tiles < MAX_TILES; i++) {
-        var cv = document.createElement('canvas');
-        cv.width = 256; cv.height = Math.round(256 * vh / vw);
-        grid.appendChild(cv);
-        tctx.push({ cv: cv, ctx: cv.getContext('2d') });
-        tiles++;
+
+    function layout() {
+      if (k === 1) {
+        // Single tile: cinematic full-screen cover.
+        grid.style.gridTemplateColumns = '1fr';
+        grid.style.gridAutoRows = '1fr';
+        return;
       }
-      reflow();
+      var GAP = 2, R = vw / vh;
+      var W = window.innerWidth, H = window.innerHeight;
+      var tw = Math.floor(Math.min((W - GAP * (k - 1)) / k,
+                                   ((H - GAP * (k - 1)) / k) * R));
+      var th = Math.round(tw / R);
+      grid.style.gridTemplateColumns = 'repeat(' + k + ', ' + tw + 'px)';
+      grid.style.gridAutoRows = th + 'px';
     }
+    window.addEventListener('resize', layout);
+
     (function paint() {
       if (tv.readyState >= 2) {
         for (var i = 0; i < tctx.length; i++) {
@@ -137,10 +145,19 @@
       requestAnimationFrame(paint);
     })();
 
-    // The "Back" button is a lie: it multiplies the grid instead.
+    // The "Back" button is a lie: each press fills the next square (4, 9, 16…).
     back.addEventListener('click', function (ev) {
       ev.stopPropagation();
-      addTiles(3);
+      if (k >= MAX_K) return;
+      k++;
+      var want = k * k, have = grid.children.length;
+      for (var i = have; i < want; i++) {
+        var cv = document.createElement('canvas');
+        cv.width = 256; cv.height = Math.round(256 * vh / vw);
+        grid.appendChild(cv);
+        tctx.push({ cv: cv, ctx: cv.getContext('2d') });
+      }
+      layout();
     });
 
     // Active-dot tracking as the carousel snaps.
