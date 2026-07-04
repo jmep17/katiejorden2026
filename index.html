@@ -181,7 +181,7 @@
     var ads = document.getElementById('ads');
     var canvases = [];
     var started = false, loading = false;
-    var adCount = 0, zTop = 40, MAX_ADS = 48, DANCE_AT = 8;
+    var adCount = 0, zTop = 40, MAX_ADS = 48, DANCE_AT = 4;
 
     // Ordered: plausible at first, increasingly self-aware as they breed.
     var SPONSORS = [
@@ -293,6 +293,14 @@
       first.style.opacity = '0'; first.style.transition = 'opacity .4s ease';
       requestAnimationFrame(function () { first.style.opacity = '1'; });
       startScrubber();
+      // After a grace period the ads stop waiting to be closed and
+      // simply multiply on their own.
+      setTimeout(function () {
+        var auto = setInterval(function () {
+          if (adCount >= MAX_ADS) { clearInterval(auto); return; }
+          makeAd(false);
+        }, 2200);
+      }, 8000);
     }
 
     // The fake film's scrubber starts "playing" too, for realism.
