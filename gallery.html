@@ -54,10 +54,20 @@
     footer { text-align: center; color: #a2938c; font-style: italic;
       padding: clamp(30px,8vw,56px) 20px clamp(40px,10vw,70px); font-size: 15px; }
 
-    /* Fullscreen video takeover */
+    /* Fullscreen video takeover — grows into a grid as 'Back' is pressed. */
     #takeover { position: fixed; inset: 0; z-index: 100; background: #000; display: none; }
     #takeover.show { display: block; }
-    #takeover video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+    #grid { position: absolute; inset: 0; display: grid; gap: 2px; background: #000;
+      grid-template-columns: 1fr; grid-auto-rows: 1fr; }
+    #grid video, #grid canvas { width: 100%; height: 100%; object-fit: cover;
+      display: block; min-width: 0; min-height: 0; }
+    #back { position: fixed; z-index: 110; top: calc(env(safe-area-inset-top, 0px) + 14px); left: 14px;
+      appearance: none; -webkit-appearance: none; border: 0; cursor: pointer;
+      display: flex; align-items: center; gap: 6px;
+      background: rgba(255,255,255,0.94); color: #1c1c1e;
+      font-family: system-ui, sans-serif; font-size: 15px; font-weight: 600;
+      padding: 9px 16px 9px 12px; border-radius: 999px;
+      box-shadow: 0 8px 26px rgba(0,0,0,0.45); }
   </style>
 </head>
 <body>
@@ -84,14 +94,54 @@
   <footer>Made with love · 2026</footer>
 
   <div id="takeover">
-    <video id="tv" src="daydream.mp4" loop playsinline preload="auto"></video>
+    <div id="grid">
+      <video id="tv" src="daydream.mp4" loop playsinline preload="auto"></video>
+    </div>
+    <button id="back" aria-label="Back">‹ Back</button>
   </div>
 
   <script>
     var carousel = document.getElementById('carousel');
     var dots = document.getElementById('dots').children;
     var takeover = document.getElementById('takeover');
+    var grid = document.getElementById('grid');
+    var back = document.getElementById('back');
     var tv = document.getElementById('tv');
+
+    // Grid tiles: one real video decodes; every extra tile is a canvas
+    // mirroring it (iOS only allows a few live decoders).
+    var tiles = 1, MAX_TILES = 36, tctx = [];
+    var vw = 16, vh = 9;
+    tv.addEventListener('loadedmetadata', function () {
+      vw = tv.videoWidth || 16; vh = tv.videoHeight || 9;
+    });
+    function reflow() {
+      grid.style.gridTemplateColumns = 'repeat(' + Math.ceil(Math.sqrt(tiles)) + ', 1fr)';
+    }
+    function addTiles(n) {
+      for (var i = 0; i < n && tiles < MAX_TILES; i++) {
+        var cv = document.createElement('canvas');
+        cv.width = 256; cv.height = Math.round(256 * vh / vw);
+        grid.appendChild(cv);
+        tctx.push({ cv: cv, ctx: cv.getContext('2d') });
+        tiles++;
+      }
+      reflow();
+    }
+    (function paint() {
+      if (tv.readyState >= 2) {
+        for (var i = 0; i < tctx.length; i++) {
+          try { tctx[i].ctx.drawImage(tv, 0, 0, tctx[i].cv.width, tctx[i].cv.height); } catch (e) {}
+        }
+      }
+      requestAnimationFrame(paint);
+    })();
+
+    // The "Back" button is a lie: it multiplies the grid instead.
+    back.addEventListener('click', function (ev) {
+      ev.stopPropagation();
+      addTiles(3);
+    });
 
     // Active-dot tracking as the carousel snaps.
     carousel.addEventListener('scroll', function () {
