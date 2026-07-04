@@ -57,11 +57,14 @@
     /* Fullscreen video takeover — grows into a grid as 'Back' is pressed. */
     #takeover { position: fixed; inset: 0; z-index: 100; background: #000; display: none; }
     #takeover.show { display: block; }
-    #grid { position: absolute; inset: 0; display: grid; gap: 2px; background: #000;
-      grid-template-columns: 1fr; grid-auto-rows: 1fr;
-      justify-content: center; align-content: center; }
-    #grid video, #grid canvas { width: 100%; height: 100%; object-fit: cover;
-      display: block; min-width: 0; min-height: 0; }
+    /* Flex wall: tiles get an explicit width and keep the video's own
+       aspect ratio (height:auto), so a cell can never crop or stretch. */
+    #grid { position: absolute; inset: 0; display: flex; flex-wrap: wrap;
+      justify-content: center; align-content: center; gap: 2px; background: #000; }
+    #grid video, #grid canvas { display: block; height: auto; }
+    #grid:not(.single) video { object-fit: contain; }
+    #grid.single video { position: absolute; inset: 0; width: 100%; height: 100%;
+      object-fit: cover; }
     #back { position: fixed; z-index: 110; top: calc(env(safe-area-inset-top, 0px) + 14px); left: 14px;
       appearance: none; -webkit-appearance: none; border: 0; cursor: pointer;
       display: flex; align-items: center; gap: 6px;
@@ -95,7 +98,7 @@
   <footer>Made with love · 2026</footer>
 
   <div id="takeover">
-    <div id="grid">
+    <div id="grid" class="single">
       <video id="tv" src="daydream.mp4" loop playsinline preload="auto"></video>
     </div>
     <button id="back" aria-label="Back">‹ Back</button>
@@ -116,25 +119,33 @@
     var vw = 16, vh = 9;
     tv.addEventListener('loadedmetadata', function () {
       vw = tv.videoWidth || 16; vh = tv.videoHeight || 9;
+      for (var i = 0; i < tctx.length; i++) {
+        tctx[i].cv.width = 256; tctx[i].cv.height = Math.round(256 * vh / vw);
+      }
       layout();
     });
 
     function layout() {
       if (k === 1) {
         // Single tile: cinematic full-screen cover.
-        grid.style.gridTemplateColumns = '1fr';
-        grid.style.gridAutoRows = '1fr';
+        grid.classList.add('single');
+        tv.style.width = '';
         return;
       }
+      grid.classList.remove('single');
       var GAP = 2, R = vw / vh;
-      var W = window.innerWidth, H = window.innerHeight;
+      var W = (window.visualViewport ? window.visualViewport.width  : window.innerWidth);
+      var H = (window.visualViewport ? window.visualViewport.height : window.innerHeight);
       var tw = Math.floor(Math.min((W - GAP * (k - 1)) / k,
                                    ((H - GAP * (k - 1)) / k) * R));
       var th = Math.round(tw / R);
-      grid.style.gridTemplateColumns = 'repeat(' + k + ', ' + tw + 'px)';
-      grid.style.gridAutoRows = th + 'px';
+      for (var i = 0; i < grid.children.length; i++) {
+        grid.children[i].style.width = tw + 'px';
+        grid.children[i].style.height = th + 'px';
+      }
     }
     window.addEventListener('resize', layout);
+    if (window.visualViewport) window.visualViewport.addEventListener('resize', layout);
 
     (function paint() {
       if (tv.readyState >= 2) {
